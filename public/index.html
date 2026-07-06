@@ -30,12 +30,11 @@
     <input id="qty" placeholder="الكمية" type="number"/>
     <label>المبلغ</label>
     <input id="amount" placeholder="المبلغ" type="number" step="0.01"/>
-    <label>رقم الفاتورة</label>
-    <input id="invoice_number" placeholder="رقم الفاتورة" />
     <label>رمز المنتج</label>
     <input id="product_code" placeholder="رمز المنتج" />
     <label>ملاحظات</label>
     <input id="notes" placeholder="ملاحظات" />
+    <div style="margin-top:8px;color:#555">ملاحظة: رقم الفاتورة يُنشىء تلقائيًا من تاريخ العملية بترتيبها في ذلك اليوم.</div>
     <button onclick="addSale()">سجّل</button>
   </section>
 
@@ -70,14 +69,15 @@
       const date = document.getElementById('date').value;
       const qty = parseInt(document.getElementById('qty').value||0);
       const amount = parseFloat(document.getElementById('amount').value||0);
-      const invoice_number = document.getElementById('invoice_number').value;
       const product_code = document.getElementById('product_code').value;
       const notes = document.getElementById('notes').value;
       if (!customer_id) return alert('اختر عميل');
       if (!date) return alert('اختر تاريخ');
-      await fetch('/api/sales', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({customer_id,type,date,qty,amount,invoice_number,product_code,notes})});
-      document.getElementById('type').value=''; document.getElementById('notes').value=''; document.getElementById('qty').value=''; document.getElementById('amount').value=''; document.getElementById('date').value=''; document.getElementById('invoice_number').value=''; document.getElementById('product_code').value='';
-      alert('تم الحفظ');
+      const res = await fetch('/api/sales', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({customer_id,type,date,qty,amount,product_code,notes})});
+      const data = await res.json();
+      document.getElementById('type').value=''; document.getElementById('notes').value=''; document.getElementById('qty').value=''; document.getElementById('amount').value=''; document.getElementById('date').value=''; document.getElementById('product_code').value='';
+      if (data && data.invoice_number) alert('تم الحفظ. رقم الفاتورة: ' + data.invoice_number);
+      else alert('تم الحفظ');
     }
     function exportAll(){ window.location = '/export/all'; }
     function exportCustomer(){

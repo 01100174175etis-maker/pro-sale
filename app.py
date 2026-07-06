@@ -82,7 +82,18 @@ def list_customers():
     conn.close()
     return jsonify(rows)
 
-# API: add sale (now accepts invoice_number and product_code)
+# Helper to generate invoice number based on date and sequence for that day
+def generate_invoice_number_for_date(conn, date_str):
+    # date_str expected in YYYY-MM-DD
+    cur = conn.cursor()
+    cur.execute('SELECT COUNT(*) as cnt FROM sales WHERE date = ?', (date_str,))
+    row = cur.fetchone()
+    count = row['cnt'] if row else 0
+    seq = count + 1
+    datepart = date_str.replace('-', '')
+    return f'INV-{datepart}-{seq:04d}'
+
+# API: add sale (invoice_number now auto-generated)
 @app.route('/api/sales', methods=['POST'])
 def add_sale():
     data = request.get_json() or {}
@@ -94,17 +105,18 @@ def add_sale():
     amount = data.get('amount', 0) or 0
     qty = data.get('qty', 0) or 0
     notes = data.get('notes', '')
-    invoice_number = data.get('invoice_number', '')
     product_code = data.get('product_code', '')
 
     conn = get_db()
     cur = conn.cursor()
+    # Generate invoice number based on date and existing count for that date
+    invoice_number = generate_invoice_number_for_date(conn, date)
     cur.execute('INSERT INTO sales(customer_id, type, date, amount, qty, notes, invoice_number, product_code) VALUES(?,?,?,?,?,?,?,?)',
                 (customer_id, type_, date, amount, qty, notes, invoice_number, product_code))
     conn.commit()
     sid = cur.lastrowid
     conn.close()
-    return jsonify({'id': sid})
+    return jsonify({'id': sid, 'invoice_number': invoice_number})
 
 # API: list sales (optionally by customer)
 @app.route('/api/sales', methods=['GET'])
@@ -113,9 +125,9 @@ def list_sales():
     conn = get_db()
     cur = conn.cursor()
     if customer_id:
-        cur.execute('SELECT s.*, c.name as customer_name FROM sales s JOIN customers c ON s.customer_id=c.id WHERE customer_id=? ORDER BY date DESC', (customer_id,))
+        cur.execute('SELECT s.*, c.name as customer_name FROM sales s JOIN customers c ON s.customer_id=c.id WHERE customer_id=? ORDER BY date DESC, id DESC', (customer_id,))
     else:
-        cur.execute('SELECT s.*, c.name as customer_name FROM sales s JOIN customers c ON s.customer_id=c.id ORDER BY date DESC')
+        cur.execute('SELECT s.*, c.name as customer_name FROM sales s JOIN customers c ON s.customer_id=c.id ORDER BY date DESC, id DESC')
     rows = [dict(r) for r in cur.fetchall()]
     conn.close()
     return jsonify(rows)
