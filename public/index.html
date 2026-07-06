@@ -21,7 +21,10 @@
         <h2>سجل عملية بيع</h2>
         <div class="form-grid">
           <label>العميل
-            <select id="custSelect"><option value="">-- اختر عميل --</option></select>
+            <div class="inline-select">
+              <select id="custSelect"><option value="">-- اختر عميل --</option></select>
+              <button class="btn small" id="addCustomerBtn" title="أضف عميل جديد">+</button>
+            </div>
           </label>
           <label>نوع المنتج
             <input id="type" placeholder="نوع المنتج" />
@@ -40,7 +43,7 @@
             <input id="notes" placeholder="ملاحظات" />
           </label>
         </div>
-        <div class="note">ملاحظة: رقم الفاتورة يُنشأ تلقائيًا من تاريخ العملية بترتيبها في ذلك ا��يوم.</div>
+        <div class="note">ملاحظة: رقم الفاتورة يُنشأ تلقائيًا من تاريخ العملية بترتيبها في ذلك اليوم.</div>
         <div class="actions">
           <button class="btn success" onclick="addSale()">سجّل العملية</button>
           <button class="btn" onclick="clearForm()">مسح الحقول</button>
@@ -103,8 +106,28 @@
           opt.textContent = c.name;
           sel.appendChild(opt);
         });
-      } catch (e) { showToast('خطأ في جلب العملاء'); }
+      } catch (e) { showToast('خطأ في جلب العملاء', 'error'); }
     }
+
+    document.addEventListener('click', function(e){
+      // handle dynamic delete buttons via event delegation
+      if (e.target && e.target.matches('.delete-sale')){
+        const id = e.target.getAttribute('data-id');
+        if (id) deleteSale(parseInt(id,10));
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', function(){
+      document.getElementById('addCustomerBtn').addEventListener('click', async function(){
+        const name = prompt('اكتب اسم العميل الجديد:');
+        if (!name) return;
+        try{
+          await fetch('/api/customers', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})});
+          await fetchCustomers();
+          showToast('تمت إضافة العميل', 'success');
+        }catch(err){ showToast('فشل إضافة العميل', 'error'); }
+      });
+    });
 
     function clearForm(){
       // keep date field as requested (do not clear date)
@@ -119,8 +142,8 @@
       const amount = parseFloat(document.getElementById('amount').value||0);
       const product_code = document.getElementById('product_code').value;
       const notes = document.getElementById('notes').value;
-      if (!customer_id) return showToast('اختر عميل من القائمة');
-      if (!date) return showToast('اختر تاريخ');
+      if (!customer_id) return showToast('اختر عميل من القائمة','error');
+      if (!date) return showToast('اختر تاريخ','error');
       try {
         const res = await fetch('/api/sales', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({customer_id,type,date,qty,amount,product_code,notes})});
         const data = await res.json();
@@ -129,13 +152,13 @@
         if (data && data.invoice_number) showToast('تم الحفظ. رقم الفاتورة: ' + data.invoice_number, 'success');
         else showToast('تم الحفظ', 'success');
         await fetchRecentSales();
-      } catch (e) { console.error(e); showToast('فشل حفظ العملية'); }
+      } catch (e) { console.error(e); showToast('فشل حفظ العملية','error'); }
     }
 
     function exportAll(){ window.location = '/export/all'; }
     function exportCustomer(){
       const id = document.getElementById('custSelect').value;
-      if (!id) return showToast('اختر عميل من القائمة');
+      if (!id) return showToast('اختر عميل من القائمة','error');
       window.location = '/export/customer/' + id;
     }
     function exportInvoices(){ window.location = '/export/invoices'; }
@@ -157,7 +180,7 @@
             <td>${s.qty||0}</td>
             <td>${s.amount||0}</td>
             <td>${s.product_code||''}</td>
-            <td><button class="btn danger small" onclick="deleteSale(${s.id})">حذف</button></td>
+            <td><button class="btn danger small delete-sale" data-id="${s.id}">حذف</button></td>
           `;
           tbody.appendChild(tr);
         });
@@ -172,9 +195,9 @@
           showToast('تم حذف العملية', 'success');
           await fetchRecentSales();
         } else {
-          showToast('فشل الحذف');
+          showToast('فشل الحذف','error');
         }
-      } catch(e){ showToast('خطأ أثناء الحذف'); }
+      } catch(e){ showToast('خطأ أثناء الحذف','error'); }
     }
 
     // small toast helper

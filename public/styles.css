@@ -1,52 +1,59 @@
-/* styles.css — improved UI for sales-tracker */
+/* styles.css — improved UI for sales-tracker (updated contrast and layout) */
 :root{
-  --bg:#f6f8fb;
+  /* Softer, eye-friendly palette */
+  --bg:#f3f6f9;
   --card:#ffffff;
-  --muted:#6b7280;
-  --primary:#2563eb;
-  --accent:#06b6d4;
-  --success:#10b981;
-  --danger:#ef4444;
-  --text:#0f172a;
-  --soft-border: rgba(15,23,42,0.06);
+  --muted:#55606a;
+  --primary:#2b6cb0; /* calm blue */
+  --accent:#38b2ac;  /* calm teal */
+  --success:#16a34a; /* green */
+  --danger:#e53e3e;  /* red */
+  --text:#071124;
+  --soft-border: rgba(7,17,36,0.07);
 }
 
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;font-family:Inter, "Segoe UI", Tahoma, Arial, sans-serif;background:var(--bg);color:var(--text);direction:rtl}
-.container{max-width:1100px;margin:24px auto;padding:20px}
-.app-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.container{max-width:1100px;margin:20px auto;padding:16px}
+.app-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
 .app-header h1{margin:0;font-size:20px}
 .app-header .muted{color:var(--muted);font-size:12px}
 .logo{background:linear-gradient(90deg,var(--primary),var(--accent));color:#fff;padding:6px 10px;border-radius:6px;font-weight:600}
 
-.grid{display:grid;grid-template-columns:1fr 420px;gap:18px}
-.card{background:var(--card);border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(2,6,23,0.06);border:1px solid var(--soft-border)}
-.form-card{min-height:360px}
-.export-card{min-height:360px}
+/* layout: keep form wider, exports compact */
+.grid{display:grid;grid-template-columns:1fr 360px;gap:14px}
+.card{background:var(--card);border-radius:10px;padding:14px;box-shadow:0 1px 3px rgba(7,17,36,0.05);border:1px solid var(--soft-border)}
+.form-card{min-height:300px}
+.export-card{min-height:220px;max-height:520px;overflow:auto}
 
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
 .form-grid label{display:block;font-size:13px;color:var(--muted)}
-.form-grid input, .form-grid select{width:100%;padding:8px;border-radius:6px;border:1px solid #e6eef6;background:#fbfdff}
+.form-grid input, .form-grid select{width:100%;padding:8px;border-radius:8px;border:1px solid #e8eef3;background:#fbfdff}
 .row{display:flex;gap:8px;margin-top:8px}
 .row input{flex:1;padding:8px;border-radius:6px;border:1px solid #e6eef6}
 
+.inline-select{display:flex;gap:6px;align-items:center}
+.inline-select select{flex:1}
+
 .actions{display:flex;gap:10px;margin-top:12px}
-.btn{background:#fff;border:1px solid #e6eef6;padding:8px 12px;border-radius:8px;cursor:pointer}
+.btn{background:#fff;border:1px solid #e6eef6;padding:8px 12px;border-radius:10px;cursor:pointer;color:var(--text)}
 .btn.primary{background:var(--primary);color:#fff;border:none}
 .btn.success{background:var(--success);color:#fff;border:none}
 .btn:hover{opacity:0.95}
 
 .btn.danger{background:var(--danger);color:#fff;border:none}
-.btn.small{padding:6px 8px;font-size:12px}
+.btn.small{padding:6px 8px;font-size:13px;border-radius:8px}
 
 .note{font-size:13px;color:var(--muted);margin-top:8px}
 
-.table-wrap{overflow:auto;margin-top:8px}
+.table-wrap{overflow:auto;margin-top:8px;max-height:300px}
 table{width:100%;border-collapse:collapse;font-size:13px}
-thead th{background:#f1f5f9;text-align:left;padding:8px;border-bottom:1px solid var(--soft-border);font-weight:600}
+thead th{background:#f7fafc;text-align:left;padding:8px;border-bottom:1px solid var(--soft-border);font-weight:600;color:var(--muted)}
 tbody td{padding:8px;border-bottom:1px solid #f3f6f9}
 
-.app-footer{display:flex;justify-content:space-between;align-items:center;margin-top:18px;color:var(--muted);font-size:13px}
+tbody tr:nth-child(odd){background:transparent}
+
+.app-footer{display:flex;justify-content:space-between;align-items:center;margin-top:14px;color:var(--muted);font-size:13px}
 
 /* responsive */
 @media (max-width:920px){
@@ -55,7 +62,7 @@ tbody td{padding:8px;border-bottom:1px solid #f3f6f9}
 }
 
 /* toast */
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:28px;background:rgba(15,23,42,0.95);color:#fff;padding:10px 14px;border-radius:8px;opacity:0;transition:opacity .25s ease;pointer-events:none}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:28px;background:rgba(7,17,36,0.9);color:#fff;padding:10px 14px;border-radius:8px;opacity:0;transition:opacity .25s ease;pointer-events:none}
 .toast.show{opacity:1}
 .toast.success{background:var(--success)}
 .toast.error{background:var(--danger)}
