@@ -2,67 +2,121 @@
 <html lang="ar">
 <head>
   <meta charset="utf-8" />
-  <title>سجل المبيعات</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>body{font-family:Arial, Helvetica, sans-serif;direction:rtl;padding:20px;max-width:900px;margin:auto}label{display:block;margin-top:8px}input,select{padding:6px;margin:6px 0;width:100%;box-sizing:border-box}button{padding:8px 12px;margin-top:8px}header{display:flex;justify-content:space-between;align-items:center}h2{margin:0}</style>
+  <title>سجل المبيعات — sales-tracker</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <header>
-    <h2>سجل المبيعات - مثال</h2>
-    <div>App: sales-tracker (Python)</div>
-  </header>
+  <div class="container">
+    <header class="app-header">
+      <div>
+        <h1>سجل المبيعات</h1>
+        <p class="muted">تطبيق بسيط لتسجيل عمليات البيع وتصدير ملفات Excel</p>
+      </div>
+      <div class="logo">sales-tracker</div>
+    </header>
 
-  <section>
-    <h3>إضافة عميل</h3>
-    <input id="custName" placeholder="اسم العميل" />
-    <button onclick="addCustomer()">إضافة</button>
-  </section>
+    <main class="grid">
+      <section class="card form-card">
+        <h2>إضافة عميل</h2>
+        <div class="row">
+          <input id="custName" placeholder="اسم العميل" />
+          <button class="btn primary" onclick="addCustomer()">إضافة</button>
+        </div>
 
-  <section>
-    <h3>إنشاء عملية بيع</h3>
-    <label>العميل</label>
-    <select id="custSelect"></select>
-    <label>نوع العملية</label>
-    <input id="type" placeholder="نوع العملية" />
-    <label>التاريخ</label>
-    <input id="date" type="date" />
-    <label>الكمية</label>
-    <input id="qty" placeholder="الكمية" type="number"/>
-    <label>المبلغ</label>
-    <input id="amount" placeholder="المبلغ" type="number" step="0.01"/>
-    <label>رمز المنتج</label>
-    <input id="product_code" placeholder="رمز المنتج" />
-    <label>ملاحظات</label>
-    <input id="notes" placeholder="ملاحظات" />
-    <div style="margin-top:8px;color:#555">ملاحظة: رقم الفاتورة يُنشىء تلقائيًا من تاريخ العملية بترتيبها في ذلك اليوم.</div>
-    <button onclick="addSale()">سجّل</button>
-  </section>
+        <h2 style="margin-top:16px">سجل عملية بيع</h2>
+        <div class="form-grid">
+          <label>العميل
+            <select id="custSelect"></select>
+          </label>
+          <label>نوع العملية
+            <input id="type" placeholder="نوع العملية" />
+          </label>
+          <label>التاريخ
+            <input id="date" type="date" />
+          </label>
+          <label>الكمية
+            <input id="qty" placeholder="الكمية" type="number"/></label>
+          <label>المبلغ
+            <input id="amount" placeholder="المبلغ" type="number" step="0.01"/></label>
+          <label>رمز المنتج
+            <input id="product_code" placeholder="رمز المنتج" /></label>
+          <label>ملاحظات
+            <input id="notes" placeholder="ملاحظات" /></label>
+        </div>
+        <div class="note">ملاحظة: رقم الفاتورة يُنشأ تلقائيًا من تاريخ العملية بترتيبها في ذلك اليوم.</div>
+        <div class="actions">
+          <button class="btn success" onclick="addSale()">سجّل العملية</button>
+          <button class="btn" onclick="clearForm()">مسح الحقول</button>
+        </div>
+      </section>
 
-  <section>
-    <h3>تصدير</h3>
-    <button onclick="exportAll()">تصدير مجمع (Excel)</button>
-    <button onclick="exportCustomer()">تصدير عميل محدد (Excel)</button>
-  </section>
+      <section class="card export-card">
+        <h2>تصدير</h2>
+        <div class="export-actions">
+          <button class="btn" onclick="exportAll()">تصدير مجمع (Excel)</button>
+          <button class="btn" onclick="exportCustomer()">تصدير لعميل محدد</button>
+        </div>
+
+        <h3 style="margin-top:18px">العمليات الأخيرة</h3>
+        <div class="table-wrap">
+          <table id="recentTable">
+            <thead>
+              <tr>
+                <th>المعرف</th>
+                <th>التاريخ</th>
+                <th>الفاتورة</th>
+                <th>العميل</th>
+                <th>النوع</th>
+                <th>الكمية</th>
+                <th>المبلغ</th>
+                <th>رمز المنتج</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <div>تطبيق محلي — لاستخدام تجريبي فقط</div>
+      <div class="muted">App: sales-tracker (Python)</div>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
 
   <script>
     async function fetchCustomers(){
-      const res = await fetch('/api/customers');
-      const data = await res.json();
-      const sel = document.getElementById('custSelect');
-      sel.innerHTML = '';
-      data.forEach(c => {
-        const o = document.createElement('option');
-        o.value = c.id; o.textContent = c.name;
-        sel.appendChild(o);
-      });
+      try {
+        const res = await fetch('/api/customers');
+        const data = await res.json();
+        const sel = document.getElementById('custSelect');
+        sel.innerHTML = '';
+        data.forEach(c => {
+          const o = document.createElement('option');
+          o.value = c.id; o.textContent = c.name;
+          sel.appendChild(o);
+        });
+      } catch (e) { showToast('خطأ في جلب العملاء'); }
     }
+
     async function addCustomer(){
-      const name = document.getElementById('custName').value;
-      if (!name) return alert('اكتب اسم العميل');
-      await fetch('/api/customers', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})});
-      document.getElementById('custName').value='';
-      fetchCustomers();
+      const name = document.getElementById('custName').value.trim();
+      if (!name) return showToast('اكتب اسم العميل');
+      try {
+        await fetch('/api/customers', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})});
+        document.getElementById('custName').value='';
+        await fetchCustomers();
+        showToast('تمت إضافة العميل', 'success');
+      } catch (e) { showToast('فشل إضافة العميل'); }
     }
+
+    function clearForm(){
+      ['type','date','qty','amount','product_code','notes'].forEach(id => document.getElementById(id).value = '');
+    }
+
     async function addSale(){
       const customer_id = document.getElementById('custSelect').value;
       const type = document.getElementById('type').value;
@@ -71,21 +125,60 @@
       const amount = parseFloat(document.getElementById('amount').value||0);
       const product_code = document.getElementById('product_code').value;
       const notes = document.getElementById('notes').value;
-      if (!customer_id) return alert('اختر عميل');
-      if (!date) return alert('اختر تاريخ');
-      const res = await fetch('/api/sales', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({customer_id,type,date,qty,amount,product_code,notes})});
-      const data = await res.json();
-      document.getElementById('type').value=''; document.getElementById('notes').value=''; document.getElementById('qty').value=''; document.getElementById('amount').value=''; document.getElementById('date').value=''; document.getElementById('product_code').value='';
-      if (data && data.invoice_number) alert('تم الحفظ. رقم الفاتورة: ' + data.invoice_number);
-      else alert('تم الحفظ');
+      if (!customer_id) return showToast('اختر عميل');
+      if (!date) return showToast('اختر تاريخ');
+      try {
+        const res = await fetch('/api/sales', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({customer_id,type,date,qty,amount,product_code,notes})});
+        const data = await res.json();
+        clearForm();
+        if (data && data.invoice_number) showToast('تم الحفظ. رقم الفاتورة: ' + data.invoice_number, 'success');
+        else showToast('تم الحفظ', 'success');
+        await fetchRecentSales();
+      } catch (e) { showToast('فشل حفظ العملية'); }
     }
+
     function exportAll(){ window.location = '/export/all'; }
     function exportCustomer(){
       const id = document.getElementById('custSelect').value;
-      if (!id) return alert('اختر عميل');
+      if (!id) return showToast('اختر عميل');
       window.location = '/export/customer/' + id;
     }
+
+    async function fetchRecentSales(){
+      try {
+        const res = await fetch('/api/sales');
+        const data = await res.json();
+        const tbody = document.querySelector('#recentTable tbody');
+        tbody.innerHTML = '';
+        data.slice(0,50).forEach(s => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${s.id}</td>
+            <td>${s.date}</td>
+            <td>${s.invoice_number||''}</td>
+            <td>${s.customer_name||''}</td>
+            <td>${s.type||''}</td>
+            <td>${s.qty||0}</td>
+            <td>${s.amount||0}</td>
+            <td>${s.product_code||''}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch(e){ /* silent */ }
+    }
+
+    // small toast helper
+    function showToast(msg, type){
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show ' + (type||'');
+      setTimeout(()=> t.className = 'toast', 3500);
+    }
+
+    // initialize
     fetchCustomers();
+    fetchRecentSales();
+    setInterval(fetchRecentSales, 15000); // refresh every 15s
   </script>
 </body>
 </html>
