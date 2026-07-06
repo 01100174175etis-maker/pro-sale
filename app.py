@@ -21,10 +21,12 @@ def get_db():
 def init_db():
     conn = get_db()
     cur = conn.cursor()
+    # Create customers table if not exists
     cur.execute('''CREATE TABLE IF NOT EXISTS customers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL
     )''')
+    # Create sales table with new columns (invoice_number, product_code)
     cur.execute('''CREATE TABLE IF NOT EXISTS sales (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         customer_id INTEGER NOT NULL,
@@ -33,8 +35,18 @@ def init_db():
         amount REAL DEFAULT 0,
         qty INTEGER DEFAULT 0,
         notes TEXT,
+        invoice_number TEXT DEFAULT '',
+        product_code TEXT DEFAULT '',
         FOREIGN KEY(customer_id) REFERENCES customers(id)
     )''')
+    # In case the table existed before without the new columns, add them
+    cur.execute("PRAGMA table_info(sales)")
+    cols = [r[1] for r in cur.fetchall()]
+    if 'invoice_number' not in cols:
+        cur.execute("ALTER TABLE sales ADD COLUMN invoice_number TEXT DEFAULT ''")
+    if 'product_code' not in cols:
+        cur.execute("ALTER TABLE sales ADD COLUMN product_code TEXT DEFAULT ''")
+
     conn.commit()
     conn.close()
 
@@ -70,7 +82,7 @@ def list_customers():
     conn.close()
     return jsonify(rows)
 
-# API: add sale
+# API: add sale (now accepts invoice_number and product_code)
 @app.route('/api/sales', methods=['POST'])
 def add_sale():
     data = request.get_json() or {}
@@ -82,10 +94,13 @@ def add_sale():
     amount = data.get('amount', 0) or 0
     qty = data.get('qty', 0) or 0
     notes = data.get('notes', '')
+    invoice_number = data.get('invoice_number', '')
+    product_code = data.get('product_code', '')
+
     conn = get_db()
     cur = conn.cursor()
-    cur.execute('INSERT INTO sales(customer_id, type, date, amount, qty, notes) VALUES(?,?,?,?,?,?)',
-                (customer_id, type_, date, amount, qty, notes))
+    cur.execute('INSERT INTO sales(customer_id, type, date, amount, qty, notes, invoice_number, product_code) VALUES(?,?,?,?,?,?,?,?)',
+                (customer_id, type_, date, amount, qty, notes, invoice_number, product_code))
     conn.commit()
     sid = cur.lastrowid
     conn.close()
@@ -105,7 +120,7 @@ def list_sales():
     conn.close()
     return jsonify(rows)
 
-# Export single customer
+# Export single customer (includes new fields)
 @app.route('/export/customer/<int:customer_id>', methods=['GET'])
 def export_customer(customer_id):
     conn = get_db()
@@ -128,11 +143,11 @@ def export_customer(customer_id):
     total_qty = sum((s.get('qty') or 0) for s in sales)
     summary.append([c['name'], len(sales), total_amount, total_qty])
 
-    # Operations sheet
+    # Operations sheet (with invoice and product)
     ws = wb.create_sheet('العمليات')
-    ws.append(['المعرف', 'التاريخ', 'النوع', 'الكمية', 'المبلغ', 'ملاحظات'])
+    ws.append(['المعرف', 'التاريخ', 'النوع', 'الكمية', 'المبلغ', 'رقم الفاتورة', 'رمز المنتج', 'ملاحظات'])
     for s in sales:
-        ws.append([s['id'], s['date'], s['type'], s['qty'], s['amount'], s['notes']])
+        ws.append([s['id'], s['date'], s.get('type', ''), s.get('qty', 0), s.get('amount', 0), s.get('invoice_number', ''), s.get('product_code', ''), s.get('notes', '')])
 
     bio = BytesIO()
     wb.save(bio)
@@ -140,7 +155,7 @@ def export_customer(customer_id):
     filename = f'customer_{customer_id}.xlsx'
     return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
-# Export all customers
+# Export all customers (includes new fields)
 @app.route('/export/all', methods=['GET'])
 def export_all():
     conn = get_db()
@@ -161,9 +176,9 @@ def export_all():
         overview.append([c['id'], c['name'], len(sales), total, qty])
 
         sh = wb.create_sheet(f'عميل_{c["id"]}')
-        sh.append(['المعرف', 'التاريخ', 'النوع', 'الكمية', 'المبلغ', 'ملاحظات'])
+        sh.append(['المعرف', 'التاريخ', 'النوع', 'الكمية', 'المبلغ', 'رقم الفاتورة', 'رمز المنتج', 'ملاحظات'])
         for s in sales:
-            sh.append([s['id'], s['date'], s['type'], s['qty'], s['amount'], s['notes']])
+            sh.append([s['id'], s['date'], s.get('type', ''), s.get('qty', 0), s.get('amount', 0), s.get('invoice_number', ''), s.get('product_code', ''), s.get('notes', '')])
 
     conn.close()
     bio = BytesIO()
