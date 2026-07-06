@@ -18,21 +18,13 @@
 
     <main class="grid">
       <section class="card form-card">
-        <h2>إضافة عميل</h2>
-        <div class="row">
-          <input id="custName" placeholder="اسم العميل" />
-          <button class="btn primary" onclick="addCustomer()">إضافة</button>
-        </div>
-
-        <h2 style="margin-top:16px">سجل عملية بيع</h2>
+        <h2>سجل عملية بيع</h2>
         <div class="form-grid">
           <label>العميل
-            <!-- input with datalist: allows typing new name or choosing existing -->
-            <input id="custInput" list="custList" placeholder="اكتب اسم العميل أو اختر" />
-            <datalist id="custList"></datalist>
+            <select id="custSelect"><option value="">-- اختر عميل --</option></select>
           </label>
-          <label>نوع العملية
-            <input id="type" placeholder="نوع العملية" />
+          <label>نوع المنتج
+            <input id="type" placeholder="نوع المنتج" />
           </label>
           <label>التاريخ
             <input id="date" type="date" />
@@ -48,7 +40,7 @@
             <input id="notes" placeholder="ملاحظات" />
           </label>
         </div>
-        <div class="note">ملاحظة: رقم الفاتورة يُنشأ تلقائيًا من تاريخ العملية بترتيبها في ذلك اليوم.</div>
+        <div class="note">ملاحظة: رقم الفاتورة يُنشأ تلقائيًا من تاريخ العملية بترتيبها في ذلك ا��يوم.</div>
         <div class="actions">
           <button class="btn success" onclick="addSale()">سجّل العملية</button>
           <button class="btn" onclick="clearForm()">مسح الحقول</button>
@@ -100,26 +92,18 @@
       try {
         const res = await fetch('/api/customers');
         const data = await res.json();
+        // ensure alphabetical order by name (backend already orders, but double-check)
+        data.sort((a,b)=> (a.name || '').localeCompare(b.name || '', 'ar'));
         customersCache = data;
-        const datalist = document.getElementById('custList');
-        datalist.innerHTML = '';
+        const sel = document.getElementById('custSelect');
+        sel.innerHTML = '<option value="">-- اختر عميل --</option>';
         data.forEach(c => {
           const opt = document.createElement('option');
-          opt.value = c.name;
-          datalist.appendChild(opt);
+          opt.value = c.id;
+          opt.textContent = c.name;
+          sel.appendChild(opt);
         });
       } catch (e) { showToast('خطأ في جلب العملاء'); }
-    }
-
-    async function addCustomer(){
-      const name = document.getElementById('custName').value.trim();
-      if (!name) return showToast('اكتب اسم العميل');
-      try {
-        await fetch('/api/customers', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})});
-        document.getElementById('custName').value='';
-        await fetchCustomers();
-        showToast('تمت إضافة العميل', 'success');
-      } catch (e) { showToast('فشل إضافة العميل'); }
     }
 
     function clearForm(){
@@ -127,31 +111,17 @@
       ['type','qty','amount','product_code','notes'].forEach(id => document.getElementById(id).value = '');
     }
 
-    async function getOrCreateCustomerByName(name){
-      name = (name||'').trim();
-      if (!name) return null;
-      const found = customersCache.find(c => c.name.toLowerCase() === name.toLowerCase());
-      if (found) return found.id;
-      // create new
-      const res = await fetch('/api/customers', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})});
-      const data = await res.json();
-      await fetchCustomers();
-      return data.id;
-    }
-
     async function addSale(){
-      const customerName = document.getElementById('custInput').value.trim();
+      const customer_id = document.getElementById('custSelect').value;
       const type = document.getElementById('type').value;
       const date = document.getElementById('date').value;
       const qty = parseInt(document.getElementById('qty').value||0);
       const amount = parseFloat(document.getElementById('amount').value||0);
       const product_code = document.getElementById('product_code').value;
       const notes = document.getElementById('notes').value;
-      if (!customerName) return showToast('اكتب اسم العميل أو اختر واحداً');
+      if (!customer_id) return showToast('اختر عميل من القائمة');
       if (!date) return showToast('اختر تاريخ');
       try {
-        const customer_id = await getOrCreateCustomerByName(customerName);
-        if (!customer_id) return showToast('فشل الحصول على معرف العميل');
         const res = await fetch('/api/sales', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({customer_id,type,date,qty,amount,product_code,notes})});
         const data = await res.json();
         // do not clear date as requested
@@ -164,11 +134,9 @@
 
     function exportAll(){ window.location = '/export/all'; }
     function exportCustomer(){
-      const name = document.getElementById('custInput').value.trim();
-      if (!name) return showToast('اكتب اسم العميل أو اختر واحداً');
-      const found = customersCache.find(c => c.name.toLowerCase() === name.toLowerCase());
-      if (!found) return showToast('العميل غير موجود');
-      window.location = '/export/customer/' + found.id;
+      const id = document.getElementById('custSelect').value;
+      if (!id) return showToast('اختر عميل من القائمة');
+      window.location = '/export/customer/' + id;
     }
     function exportInvoices(){ window.location = '/export/invoices'; }
 
