@@ -36,6 +36,9 @@ html,body{height:100%;margin:0;font-family:Inter, "Segoe UI", Tahoma, Arial, san
 .btn.success{background:var(--success);color:#fff;border:none}
 .btn:hover{opacity:0.95}
 
+.btn.danger{background:var(--danger);color:#fff;border:none}
+.btn.small{padding:6px 8px;font-size:12px}
+
 .note{font-size:13px;color:var(--muted);margin-top:8px}
 
 .table-wrap{overflow:auto;margin-top:8px}

@@ -27,7 +27,9 @@
         <h2 style="margin-top:16px">سجل عملية بيع</h2>
         <div class="form-grid">
           <label>العميل
-            <select id="custSelect"></select>
+            <!-- input with datalist: allows typing new name or choosing existing -->
+            <input id="custInput" list="custList" placeholder="اكتب اسم العميل أو اختر" />
+            <datalist id="custList"></datalist>
           </label>
           <label>نوع العملية
             <input id="type" placeholder="نوع العملية" />
@@ -40,9 +42,11 @@
           <label>المبلغ
             <input id="amount" placeholder="المبلغ" type="number" step="0.01"/></label>
           <label>رمز المنتج
-            <input id="product_code" placeholder="رمز المنتج" /></label>
+            <input id="product_code" placeholder="رمز المنتج" />
+          </label>
           <label>ملاحظات
-            <input id="notes" placeholder="ملاحظات" /></label>
+            <input id="notes" placeholder="ملاحظات" />
+          </label>
         </div>
         <div class="note">ملاحظة: رقم الفاتورة يُنشأ تلقائيًا من تاريخ العملية بترتيبها في ذلك اليوم.</div>
         <div class="actions">
@@ -56,6 +60,7 @@
         <div class="export-actions">
           <button class="btn" onclick="exportAll()">تصدير مجمع (Excel)</button>
           <button class="btn" onclick="exportCustomer()">تصدير لعميل محدد</button>
+          <button class="btn" onclick="exportInvoices()">تحميل ملف مرجع أرقام العمليات</button>
         </div>
 
         <h3 style="margin-top:18px">العمليات الأخيرة</h3>
@@ -71,6 +76,7 @@
                 <th>الكمية</th>
                 <th>المبلغ</th>
                 <th>رمز المنتج</th>
+                <th>إجراء</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -88,16 +94,19 @@
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <script>
+    let customersCache = [];
+
     async function fetchCustomers(){
       try {
         const res = await fetch('/api/customers');
         const data = await res.json();
-        const sel = document.getElementById('custSelect');
-        sel.innerHTML = '';
+        customersCache = data;
+        const datalist = document.getElementById('custList');
+        datalist.innerHTML = '';
         data.forEach(c => {
-          const o = document.createElement('option');
-          o.value = c.id; o.textContent = c.name;
-          sel.appendChild(o);
+          const opt = document.createElement('option');
+          opt.value = c.name;
+          datalist.appendChild(opt);
         });
       } catch (e) { showToast('خطأ في جلب العملاء'); }
     }
@@ -114,35 +123,54 @@
     }
 
     function clearForm(){
-      ['type','date','qty','amount','product_code','notes'].forEach(id => document.getElementById(id).value = '');
+      // keep date field as requested (do not clear date)
+      ['type','qty','amount','product_code','notes'].forEach(id => document.getElementById(id).value = '');
+    }
+
+    async function getOrCreateCustomerByName(name){
+      name = (name||'').trim();
+      if (!name) return null;
+      const found = customersCache.find(c => c.name.toLowerCase() === name.toLowerCase());
+      if (found) return found.id;
+      // create new
+      const res = await fetch('/api/customers', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})});
+      const data = await res.json();
+      await fetchCustomers();
+      return data.id;
     }
 
     async function addSale(){
-      const customer_id = document.getElementById('custSelect').value;
+      const customerName = document.getElementById('custInput').value.trim();
       const type = document.getElementById('type').value;
       const date = document.getElementById('date').value;
       const qty = parseInt(document.getElementById('qty').value||0);
       const amount = parseFloat(document.getElementById('amount').value||0);
       const product_code = document.getElementById('product_code').value;
       const notes = document.getElementById('notes').value;
-      if (!customer_id) return showToast('اختر عميل');
+      if (!customerName) return showToast('اكتب اسم العميل أو اختر واحداً');
       if (!date) return showToast('اختر تاريخ');
       try {
+        const customer_id = await getOrCreateCustomerByName(customerName);
+        if (!customer_id) return showToast('فشل الحصول على معرف العميل');
         const res = await fetch('/api/sales', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({customer_id,type,date,qty,amount,product_code,notes})});
         const data = await res.json();
-        clearForm();
+        // do not clear date as requested
+        document.getElementById('type').value=''; document.getElementById('qty').value=''; document.getElementById('amount').value=''; document.getElementById('product_code').value=''; document.getElementById('notes').value='';
         if (data && data.invoice_number) showToast('تم الحفظ. رقم الفاتورة: ' + data.invoice_number, 'success');
         else showToast('تم الحفظ', 'success');
         await fetchRecentSales();
-      } catch (e) { showToast('فشل حفظ العملية'); }
+      } catch (e) { console.error(e); showToast('فشل حفظ العملية'); }
     }
 
     function exportAll(){ window.location = '/export/all'; }
     function exportCustomer(){
-      const id = document.getElementById('custSelect').value;
-      if (!id) return showToast('اختر عميل');
-      window.location = '/export/customer/' + id;
+      const name = document.getElementById('custInput').value.trim();
+      if (!name) return showToast('اكتب اسم العميل أو اختر واحداً');
+      const found = customersCache.find(c => c.name.toLowerCase() === name.toLowerCase());
+      if (!found) return showToast('العميل غير موجود');
+      window.location = '/export/customer/' + found.id;
     }
+    function exportInvoices(){ window.location = '/export/invoices'; }
 
     async function fetchRecentSales(){
       try {
@@ -161,10 +189,24 @@
             <td>${s.qty||0}</td>
             <td>${s.amount||0}</td>
             <td>${s.product_code||''}</td>
+            <td><button class="btn danger small" onclick="deleteSale(${s.id})">حذف</button></td>
           `;
           tbody.appendChild(tr);
         });
-      } catch(e){ /* silent */ }
+      } catch(e){ console.error(e); }
+    }
+
+    async function deleteSale(id){
+      if (!confirm('هل تريد حذف هذه العملية؟')) return;
+      try {
+        const res = await fetch('/api/sales/' + id, {method: 'DELETE'});
+        if (res.ok) {
+          showToast('تم حذف العملية', 'success');
+          await fetchRecentSales();
+        } else {
+          showToast('فشل الحذف');
+        }
+      } catch(e){ showToast('خطأ أثناء الحذف'); }
     }
 
     // small toast helper

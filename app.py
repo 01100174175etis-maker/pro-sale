@@ -118,6 +118,21 @@ def add_sale():
     conn.close()
     return jsonify({'id': sid, 'invoice_number': invoice_number})
 
+# API: delete sale
+@app.route('/api/sales/<int:sale_id>', methods=['DELETE'])
+def delete_sale(sale_id):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM sales WHERE id = ?', (sale_id,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'error': 'not found'}), 404
+    cur.execute('DELETE FROM sales WHERE id = ?', (sale_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'deleted': sale_id})
+
 # API: list sales (optionally by customer)
 @app.route('/api/sales', methods=['GET'])
 def list_sales():
@@ -197,6 +212,28 @@ def export_all():
     wb.save(bio)
     bio.seek(0)
     filename = 'all_customers.xlsx'
+    return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+# Export invoices reference file
+@app.route('/export/invoices', methods=['GET'])
+def export_invoices():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('SELECT s.id, s.date, s.invoice_number, c.name as customer_name, s.amount, s.product_code FROM sales s JOIN customers c ON s.customer_id=c.id ORDER BY s.date, s.id')
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'رقم العمليات'
+    ws.append(['المعرف', 'التاريخ', 'رقم الفاتورة', 'العميل', 'المبلغ', 'رمز المنتج'])
+    for r in rows:
+        ws.append([r.get('id'), r.get('date'), r.get('invoice_number'), r.get('customer_name'), r.get('amount'), r.get('product_code')])
+
+    bio = BytesIO()
+    wb.save(bio)
+    bio.seek(0)
+    filename = 'invoices_reference.xlsx'
     return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 if __name__ == '__main__':
