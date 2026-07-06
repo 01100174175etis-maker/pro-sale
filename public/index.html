@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <title>سجل المبيعات</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>body{font-family:Arial, Helvetica, sans-serif;direction:rtl;padding:20px;max-width:900px;margin:auto}label{display:block;margin-top:8px}input,select{padding:6px;margin:6px 0;width:100%;box-sizing:border-box}button{padding:8px 12px;margin-top:8px}header{display:flex;justify-content:space-between;align-items:center}h2{margin:0}</style>
+</head>
+<body>
+  <header>
+    <h2>سجل المبيعات - مثال</h2>
+    <div>App: sales-tracker</div>
+  </header>
+
+  <section>
+    <h3>إضافة عميل</h3>
+    <input id="custName" placeholder="اسم العميل" />
+    <button onclick="addCustomer()">إضافة</button>
+  </section>
+
+  <section>
+    <h3>إنشاء عملية بيع</h3>
+    <label>العميل</label>
+    <select id="custSelect"></select>
+    <label>نوع العملية</label>
+    <input id="type" placeholder="نوع العملية" />
+    <label>التاريخ</label>
+    <input id="date" type="date" />
+    <label>الكمية</label>
+    <input id="qty" placeholder="الكمية" type="number"/>
+    <label>المبلغ</label>
+    <input id="amount" placeholder="المبلغ" type="number" step="0.01"/>
+    <label>ملاحظات</label>
+    <input id="notes" placeholder="ملاحظات" />
+    <button onclick="addSale()">سجّل</button>
+  </section>
+
+  <section>
+    <h3>تصدير</h3>
+    <button onclick="exportAll()">تصدير مجمع (Excel)</button>
+    <button onclick="exportCustomer()">تصدير عميل محدد (Excel)</button>
+  </section>
+
+  <script>
+    async function fetchCustomers(){
+      const res = await fetch('/api/customers');
+      const data = await res.json();
+      const sel = document.getElementById('custSelect');
+      sel.innerHTML = '';
+      data.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id; o.textContent = c.name;
+        sel.appendChild(o);
+      });
+    }
+    async function addCustomer(){
+      const name = document.getElementById('custName').value;
+      if (!name) return alert('اكتب اسم العميل');
+      await fetch('/api/customers', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})});
+      document.getElementById('custName').value='';
+      fetchCustomers();
+    }
+    async function addSale(){
+      const customer_id = document.getElementById('custSelect').value;
+      const type = document.getElementById('type').value;
+      const date = document.getElementById('date').value;
+      const qty = parseInt(document.getElementById('qty').value||0);
+      const amount = parseFloat(document.getElementById('amount').value||0);
+      const notes = document.getElementById('notes').value;
+      if (!customer_id) return alert('اختر عميل');
+      if (!date) return alert('اختر تاريخ');
+      await fetch('/api/sales', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({customer_id,type,date,qty,amount,notes})});
+      document.getElementById('type').value=''; document.getElementById('notes').value=''; document.getElementById('qty').value=''; document.getElementById('amount').value=''; document.getElementById('date').value='';
+      alert('تم الحفظ');
+    }
+    function exportAll(){ window.location = '/export/all'; }
+    function exportCustomer(){
+      const id = document.getElementById('custSelect').value;
+      if (!id) return alert('اختر عميل');
+      window.location = '/export/customer/' + id;
+    }
+    fetchCustomers();
+  </script>
+</body>
+</html>
